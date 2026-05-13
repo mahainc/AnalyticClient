@@ -6,6 +6,16 @@ import AnalyticClient
 extension AnalyticClient: DependencyKey {
     public static var liveValue: Self {
         .init(
+            initialize: { config in
+                Analytics.setAnalyticsCollectionEnabled(config.collectionEnabled)
+                if let id = config.userID {
+                    Crashlytics.crashlytics().setUserID(id)
+                    Analytics.setUserID(id)
+                }
+                for (name, value) in config.userProperties {
+                    Analytics.setUserProperty(value, forName: name)
+                }
+            },
             trackScreen: { name, params in
                 var merged: [String: Any] = [
                     AnalyticsParameterScreenName: name,

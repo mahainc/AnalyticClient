@@ -15,6 +15,7 @@ extension AnalyticClient: TestDependencyKey {
 extension AnalyticClient {
     /// No-op mock — all calls succeed silently. Useful when a test doesn't care about analytics.
     public static let noop: Self = .init(
+        initialize:                     { _ in },
         trackScreen:                    { _, _ in },
         trackEvent:                     { _, _ in },
         setUserID:                      { _ in },

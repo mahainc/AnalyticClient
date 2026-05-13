@@ -7,6 +7,11 @@ import DependenciesMacros
 /// Params use the typed `AnalyticClient.Param` so numeric metrics aren't forced to strings.
 @DependencyClient
 public struct AnalyticClient: Sendable {
+    /// One-shot bootstrap: applies `collectionEnabled`, then `userID` (if
+    /// non-nil), then each entry of `userProperties`. Idempotent — Firebase
+    /// persists `collectionEnabled` and user IDs across launches, so calling
+    /// twice with the same `AnalyticConfig` is a no-op.
+    public var initialize: @Sendable (_ config: AnalyticConfig) async -> Void
     public var trackScreen: @Sendable (_ name: String, _ params: [String: Param]) async -> Void
     public var trackEvent:  @Sendable (_ name: String, _ params: [String: Param]) async -> Void
     public var setUserID:   @Sendable (_ id: String?) async -> Void
