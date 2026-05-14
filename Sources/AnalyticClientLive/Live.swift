@@ -2,11 +2,27 @@ import Dependencies
 import AnalyticClient
 @preconcurrency import FirebaseAnalytics
 @preconcurrency import FirebaseCrashlytics
+import OSLog
+
+/// Firebase Analytics silently drops any param whose key starts with one of
+/// these prefixes (Firebase reserves them for SDK-internal use; the drop is
+/// reported only as `I-ACS013008` inside Firebase's own subsystem). Surface
+/// the drop on our own subsystem so call-site bugs are obvious.
+private let reservedParamPrefixes: [String] = ["firebase_", "google_", "ga_"]
+
+private func droppedReservedKeys(_ params: [String: AnalyticClient.Param]) -> [String] {
+    params.keys.filter { key in
+        reservedParamPrefixes.contains { key.hasPrefix($0) }
+    }
+}
 
 extension AnalyticClient: DependencyKey {
     public static var liveValue: Self {
         .init(
             initialize: { config in
+                Logger.analyticClient.info(
+                    "initialize — collectionEnabled=\(config.collectionEnabled, privacy: .public) userID=\(config.userID ?? "nil", privacy: .public) properties=\(config.userProperties.count, privacy: .public)"
+                )
                 Analytics.setAnalyticsCollectionEnabled(config.collectionEnabled)
                 if let id = config.userID {
                     Crashlytics.crashlytics().setUserID(id)
@@ -17,6 +33,15 @@ extension AnalyticClient: DependencyKey {
                 }
             },
             trackScreen: { name, params in
+                let dropped = droppedReservedKeys(params)
+                if !dropped.isEmpty {
+                    Logger.analyticClient.notice(
+                        "trackScreen(\(name, privacy: .public)) — Firebase will DROP params with reserved prefix: \(dropped.joined(separator: ","), privacy: .public)"
+                    )
+                }
+                Logger.analyticClient.info(
+                    "trackScreen(\(name, privacy: .public)) paramCount=\(params.count, privacy: .public)"
+                )
                 var merged: [String: Any] = [
                     AnalyticsParameterScreenName: name,
                     AnalyticsParameterScreenClass: "\(name)View",
@@ -25,6 +50,15 @@ extension AnalyticClient: DependencyKey {
                 Analytics.logEvent(AnalyticsEventScreenView, parameters: merged)
             },
             trackEvent: { name, params in
+                let dropped = droppedReservedKeys(params)
+                if !dropped.isEmpty {
+                    Logger.analyticClient.notice(
+                        "trackEvent(\(name, privacy: .public)) — Firebase will DROP params with reserved prefix: \(dropped.joined(separator: ","), privacy: .public)"
+                    )
+                }
+                Logger.analyticClient.info(
+                    "trackEvent(\(name, privacy: .public)) paramCount=\(params.count, privacy: .public)"
+                )
                 if params.isEmpty {
                     Analytics.logEvent(name, parameters: nil)
                 } else {
@@ -34,21 +68,32 @@ extension AnalyticClient: DependencyKey {
                 }
             },
             setUserID: { id in
+                Logger.analyticClient.debug("setUserID(\(id ?? "nil", privacy: .public))")
                 // Crashlytics clears with `""`; Analytics clears with `nil`.
                 Crashlytics.crashlytics().setUserID(id ?? "")
                 Analytics.setUserID(id)
             },
             setUserProperty: { value, name in
+                Logger.analyticClient.info(
+                    "setUserProperty(\(name, privacy: .public)=\(value ?? "nil", privacy: .public))"
+                )
                 // Firebase accepts `nil` to clear the property.
                 Analytics.setUserProperty(value, forName: name)
             },
             setAnalyticsCollectionEnabled: { enabled in
+                Logger.analyticClient.info(
+                    "setAnalyticsCollectionEnabled(\(enabled, privacy: .public))"
+                )
                 Analytics.setAnalyticsCollectionEnabled(enabled)
             },
             log: { message in
+                Logger.analyticClient.debug("crashlytics.log(\(message, privacy: .public))")
                 Crashlytics.crashlytics().log(message)
             },
             recordError: { error, userInfo in
+                Logger.analyticClient.notice(
+                    "recordError: \(error.localizedDescription, privacy: .public) userInfoKeys=\(userInfo?.keys.joined(separator: ",") ?? "nil", privacy: .public)"
+                )
                 if let userInfo {
                     var dict: [String: Any] = [:]
                     for (k, v) in userInfo { dict[k] = v.anyValue }
