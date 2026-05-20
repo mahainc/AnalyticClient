@@ -13,7 +13,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-dependencies.git", from: "1.9.0"),
         .package(url: "https://github.com/pointfreeco/swift-case-paths.git", from: "1.5.0"),
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", branch: "main"),
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "12.13.0"),
     ],
     targets: [
         .target(
