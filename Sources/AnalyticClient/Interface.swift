@@ -2,8 +2,10 @@ import DependenciesMacros
 
 /// A generic analytics + crash-reporting façade.
 ///
-/// The interface is intentionally free of app-specific `Screen` / `Event` enums —
-/// consumer apps keep their own enums and call `trackScreen(name:params:)` with raw strings.
+/// The interface is intentionally free of app-specific `Screen` / `Event` *values* —
+/// consumer apps declare their own tokens and call `trackScreen(name:params:)` with raw
+/// strings. The package does ship a generic, extensible `AnalyticClient.Screen` token
+/// *type* (apps add their own values via an extension); it hardcodes no screens itself.
 /// Params use the typed `AnalyticClient.Param` so numeric metrics aren't forced to strings.
 @DependencyClient
 public struct AnalyticClient: Sendable {
